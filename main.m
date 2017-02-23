@@ -1,0 +1,55 @@
+close all
+clear all
+
+addpath('Libraries/');
+
+pseudo_ranges = load('Data/Pseudo_ranges.csv');
+pseudo_range_rates = load('Data/Pseudo_range_rates.csv');
+
+%Initialise the Kalman filter state vector estimate and error covariance matrix 
+[init_pos,init_vel] = pv_NED_to_ECEF(0,0,0,[0; 0; 0]);
+state_estimate = [init_pos;init_vel;10;0.1];
+
+% Initialise error covariance matrix
+error_covariance =  zeros(8);
+error_covariance(1,1) = 2^2;
+error_covariance(2,2) = 2^2;
+error_covariance(3,3) = 2^2;
+error_covariance(4,4) = 0.02^2;
+error_covariance(5,5) = 0.02^2;
+error_covariance(6,6) = 0.02^2;
+error_covariance(7,7) = 10;
+error_covariance(8,8) = 200^2;
+
+% Find initial state estimate 
+
+latitude = zeros(180,1);
+longitude = zeros(180,1);
+height = zeros(180,1);
+velocity = zeros(180,3);
+
+
+epoch = 0;
+
+for i = 1:5000
+
+    [ updated_state_estimates,updated_error_covariance,latitude(epoch+1),longitude(epoch+1),height(epoch+1),velocity(epoch+1,:)   ]...
+    = gnss_kalman( pseudo_ranges, pseudo_range_rates,state_estimate,error_covariance,epoch);
+
+    state_estimate = updated_state_estimates;
+    error_covariance = updated_error_covariance;
+    
+end    
+    
+for epoch = 1:850
+    
+
+    [ updated_state_estimates,updated_error_covariance,latitude(epoch+1),longitude(epoch+1),height(epoch+1),velocity(epoch+1,:)   ]...
+    = gnss_kalman( pseudo_ranges, pseudo_range_rates,state_estimate,error_covariance,epoch);
+    
+    state_estimate = updated_state_estimates;
+    error_covariance = updated_error_covariance;
+    
+end
+
+kmlwriteline('coordinates.kml',latitude,longitude)
